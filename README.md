@@ -4,6 +4,14 @@ Custom Home Assistant integration for UPET / Airrobo smart cat litter boxes.
 
 This integration uses the vendor cloud API for account/device data and the vendor IM/MQTT channel for live work commands and work-state polling.
 
+## Warning
+
+This is an unofficial integration and is not affiliated with, endorsed by, or supported by UPET, Airrobo, or the vendor.
+
+Use it at your own risk. The integration depends on private vendor APIs and may stop working or trigger vendor-side account restrictions at any time. I am not responsible for blocked accounts, lost access, device issues, or any other consequences of using this integration.
+
+For safer use, create a separate UPET/Airrobo account and share litter box access to that account instead of using your primary account.
+
 ## Features
 
 - Account login with UPET/Airrobo credentials.
