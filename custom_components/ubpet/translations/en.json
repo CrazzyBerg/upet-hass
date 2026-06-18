@@ -1,0 +1,184 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "UPET / Airrobo Cat Litter Box",
+        "description": "Enter your UPET/Airrobo account credentials. App credentials and region endpoint are detected from the recovered working API flow.",
+        "data": {
+          "username": "Account",
+          "password": "Password",
+          "app_key": "App key",
+          "base_url": "Base URL",
+          "app_id": "App ID",
+          "product": "Product"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Authentication failed. Check account and password.",
+      "cannot_connect": "Could not connect to the UPET API.",
+      "unknown": "Unexpected error. Check Home Assistant logs.",
+      "missing_required": "Account and password are required."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "device_status": {
+        "name": "Device status"
+      },
+      "box_status": {
+        "name": "Box status"
+      },
+      "last_event": {
+        "name": "Last event"
+      },
+      "box_use_times": {
+        "name": "Box use times"
+      },
+      "waste_bin_level": {
+        "name": "Waste bin level"
+      },
+      "box_full_max": {
+        "name": "Box full max"
+      },
+      "box_full_alert": {
+        "name": "Box full alert"
+      },
+      "deodorant_remaining_days": {
+        "name": "Deodorant remaining days"
+      },
+      "cat_weight": {
+        "name": "Weight"
+      },
+      "cat_visits": {
+        "name": "Visits"
+      },
+      "cat_cost_time": {
+        "name": "Usage duration"
+      },
+      "firmware_version": {
+        "name": "Firmware version"
+      },
+      "auto_clean_delay_current": {
+        "name": "Auto clean delay"
+      },
+      "wifi_name": {
+        "name": "Wi-Fi name"
+      },
+      "empty_waste_bin_reminder_days": {
+        "name": "Empty waste bin reminder days"
+      },
+      "mqtt_work_mode": {
+        "name": "MQTT work mode"
+      },
+      "mqtt_work_state": {
+        "name": "MQTT work state"
+      },
+      "mqtt_work_cause": {
+        "name": "MQTT work cause"
+      },
+      "last_rest_update": {
+        "name": "Last REST update"
+      },
+      "last_mqtt_update": {
+        "name": "Last MQTT update"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "deodorant_expired": {
+        "name": "Deodorant expired"
+      },
+      "sensor_switch": {
+        "name": "Sensor enabled"
+      },
+      "camera_switch": {
+        "name": "Camera enabled"
+      },
+      "control_board_switch": {
+        "name": "Child lock"
+      }
+    },
+    "number": {
+      "auto_clean_delay": {
+        "name": "Auto clean delay"
+      }
+    },
+    "switch": {
+      "deodorant_alert": {
+        "name": "Deodorant alert"
+      },
+      "do_not_disturb": {
+        "name": "Do not disturb"
+      },
+      "light_schedule": {
+        "name": "Light schedule"
+      },
+      "empty_waste_bin_reminder": {
+        "name": "Empty waste bin reminder"
+      },
+      "auto_clean": {
+        "name": "Auto clean"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "name": "Do not disturb start"
+      },
+      "do_not_disturb_end": {
+        "name": "Do not disturb end"
+      },
+      "light_schedule_start": {
+        "name": "Light schedule start"
+      },
+      "light_schedule_end": {
+        "name": "Light schedule end"
+      },
+      "empty_waste_bin_reminder_time": {
+        "name": "Empty waste bin reminder time"
+      }
+    },
+    "select": {
+      "empty_waste_bin_reminder_days_select": {
+        "name": "Empty waste bin reminder days"
+      }
+    },
+    "button": {
+      "rest_request": {
+        "name": "REST request"
+      },
+      "mqtt_request_state": {
+        "name": "Request state"
+      },
+      "mqtt_start_clean_up": {
+        "name": "Start clean"
+      },
+      "mqtt_pause_clean_up": {
+        "name": "Pause clean"
+      },
+      "mqtt_resume_clean_up": {
+        "name": "Resume clean"
+      },
+      "mqtt_start_flatten": {
+        "name": "Flatten"
+      },
+      "mqtt_pause_flatten": {
+        "name": "Pause flatten"
+      },
+      "mqtt_resume_flatten": {
+        "name": "Resume flatten"
+      },
+      "mqtt_start_rise": {
+        "name": "Raise litter rake"
+      },
+      "mqtt_start_drop": {
+        "name": "Lower litter rake"
+      }
+    }
+  }
+}

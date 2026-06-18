@@ -1,0 +1,25 @@
+# Local secrets and captures
+.env
+*.env
+upet.env
+airrobo_dump/
+traffic*.json
+trafic*.json
+*.ipa
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
+.idea/
+.DS_Store
+
+# Home Assistant local runtime
+.storage/
+home-assistant.log*

@@ -1,0 +1,184 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "UPET / Airrobo котячий туалет",
+        "description": "Введіть облікові дані UPET/Airrobo. Параметри API можна зберігати локально в secrets.py або ввести вручну, якщо файл відсутній.",
+        "data": {
+          "username": "Обліковий запис",
+          "password": "Пароль",
+          "app_key": "Ключ застосунку",
+          "base_url": "Базова URL-адреса",
+          "app_id": "ID застосунку",
+          "product": "Продукт"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Помилка автентифікації. Перевірте обліковий запис і пароль.",
+      "cannot_connect": "Не вдалося підключитися до API UPET.",
+      "unknown": "Неочікувана помилка. Перевірте журнали Home Assistant.",
+      "missing_required": "Обліковий запис і пароль обов'язкові."
+    },
+    "abort": {
+      "already_configured": "Цей обліковий запис уже налаштовано."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "device_status": {
+        "name": "Стан пристрою"
+      },
+      "box_status": {
+        "name": "Статус туалету"
+      },
+      "last_event": {
+        "name": "Остання подія"
+      },
+      "box_use_times": {
+        "name": "Кількість використань"
+      },
+      "waste_bin_level": {
+        "name": "Заповнення контейнера"
+      },
+      "box_full_max": {
+        "name": "Максимум контейнера"
+      },
+      "box_full_alert": {
+        "name": "Поріг сповіщення контейнера"
+      },
+      "deodorant_remaining_days": {
+        "name": "Днів до заміни дезодоранта"
+      },
+      "cat_weight": {
+        "name": "Вага"
+      },
+      "cat_visits": {
+        "name": "Відвідування"
+      },
+      "cat_cost_time": {
+        "name": "Тривалість використання"
+      },
+      "firmware_version": {
+        "name": "Версія прошивки"
+      },
+      "auto_clean_delay_current": {
+        "name": "Затримка автоочищення"
+      },
+      "wifi_name": {
+        "name": "Назва Wi-Fi"
+      },
+      "empty_waste_bin_reminder_days": {
+        "name": "Дні нагадування спорожнити контейнер"
+      },
+      "mqtt_work_mode": {
+        "name": "MQTT режим роботи"
+      },
+      "mqtt_work_state": {
+        "name": "MQTT стан роботи"
+      },
+      "mqtt_work_cause": {
+        "name": "MQTT причина стану"
+      },
+      "last_rest_update": {
+        "name": "Останнє REST оновлення"
+      },
+      "last_mqtt_update": {
+        "name": "Останнє MQTT оновлення"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Онлайн"
+      },
+      "deodorant_expired": {
+        "name": "Дезодорант прострочено"
+      },
+      "sensor_switch": {
+        "name": "Сенсор увімкнено"
+      },
+      "camera_switch": {
+        "name": "Камеру увімкнено"
+      },
+      "control_board_switch": {
+        "name": "Блокування від дітей"
+      }
+    },
+    "number": {
+      "auto_clean_delay": {
+        "name": "Затримка автоочищення"
+      }
+    },
+    "switch": {
+      "deodorant_alert": {
+        "name": "Сповіщення про дезодорант"
+      },
+      "do_not_disturb": {
+        "name": "Не турбувати"
+      },
+      "light_schedule": {
+        "name": "Розклад підсвічування"
+      },
+      "empty_waste_bin_reminder": {
+        "name": "Нагадування спорожнити контейнер"
+      },
+      "auto_clean": {
+        "name": "Автоочищення"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "name": "Початок режиму Не турбувати"
+      },
+      "do_not_disturb_end": {
+        "name": "Кінець режиму Не турбувати"
+      },
+      "light_schedule_start": {
+        "name": "Початок розкладу підсвічування"
+      },
+      "light_schedule_end": {
+        "name": "Кінець розкладу підсвічування"
+      },
+      "empty_waste_bin_reminder_time": {
+        "name": "Час нагадування спорожнити контейнер"
+      }
+    },
+    "select": {
+      "empty_waste_bin_reminder_days_select": {
+        "name": "Дні нагадування спорожнити контейнер"
+      }
+    },
+    "button": {
+      "rest_request": {
+        "name": "REST запит"
+      },
+      "mqtt_request_state": {
+        "name": "Запитати стан"
+      },
+      "mqtt_start_clean_up": {
+        "name": "Почати очищення"
+      },
+      "mqtt_pause_clean_up": {
+        "name": "Пауза очищення"
+      },
+      "mqtt_resume_clean_up": {
+        "name": "Продовжити очищення"
+      },
+      "mqtt_start_flatten": {
+        "name": "Вирівняти наповнювач"
+      },
+      "mqtt_pause_flatten": {
+        "name": "Пауза вирівнювання"
+      },
+      "mqtt_resume_flatten": {
+        "name": "Продовжити вирівнювання"
+      },
+      "mqtt_start_rise": {
+        "name": "Підняти граблі"
+      },
+      "mqtt_start_drop": {
+        "name": "Опустити граблі"
+      }
+    }
+  }
+}
