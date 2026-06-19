@@ -16,7 +16,7 @@ For safer use, create a separate UPET/Airrobo account and share litter box acces
 
 - Account login with UPET/Airrobo credentials.
 - Device discovery from the vendor cloud account.
-- Read-only device, waste-bin, deodorant, online, firmware, and event data.
+- Read-only box, waste-bin, deodorant, online, and firmware data.
 - Cat profile sensors and cat picture URL attributes when returned by the API.
 - Config controls for confirmed settings:
   - Auto clean delay.
@@ -95,12 +95,11 @@ use `custom_components/ubpet/secrets.py.example` as a template for a private
 
 Device sensors:
 
-- Device status.
 - Box status.
-- Last event.
 - Empty waste-bin reminder days.
 - Box use times.
 - Waste-bin level.
+- Waste-bin last reset.
 - Box full max.
 - Box full alert.
 - Deodorant remaining days.
@@ -136,6 +135,7 @@ Device buttons:
 
 - REST request.
 - MQTT request state.
+- Reset waste-bin counter.
 - Start clean.
 - Pause clean.
 - Resume clean.
@@ -197,7 +197,7 @@ Confirmed operation ordinals:
 - The integration depends on the vendor cloud and vendor IM/MQTT service.
 - Commands are confirmed by MQTT delivery/status responses, but full semantic validation of every receipt/error cause is not complete.
 - Control board / child lock is currently exposed as read-only because the observed API flow returns a permission error for writes.
-- Deodorize, reset waste-bin counter, direct light control, camera toggle, and full-alert threshold controls are not implemented yet.
+- Deodorize, direct light control, camera toggle, and full-alert threshold controls are not implemented yet.
 
 ## Development
 
@@ -236,6 +236,7 @@ Implemented REST endpoints:
 - `GET /user-service-rest/v2/robot/common/device/list`
 - `GET /catbox-server/box/config/allConfig?serialNumber=...`
 - `GET /catbox-server/box/config/box-use-times/?serialNumber=...`
+- `PUT /catbox-server/box/config/box-use-times/reset`
 - `GET /catbox-server/app/deodorant-block/status?serialNumber=...`
 - `GET /v1/ubtechinc-im-manager/im/online/device/?sn=...`
 - `POST /v1/ubtechinc-im-manager/im/login`
@@ -261,7 +262,6 @@ Planned or open work:
 
 - Decode more MQTT receipt/error causes and surface command failures more clearly.
 - Implement deodorize command if available.
-- Implement reset waste-bin counter command.
 - Implement full-alert threshold setting.
 - Implement writable control board / child lock if a permitted API flow is found.
 - Add Home Assistant platform tests with `pytest-homeassistant-custom-component`.

@@ -18,6 +18,7 @@ from .coordinator import UbpetDataUpdateCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 REST_REQUEST_SERVICE = "__rest_request"
+RESET_WASTE_BIN_SERVICE = "__reset_waste_bin"
 DIAGNOSTIC_SERVICES = {"request_state", REST_REQUEST_SERVICE}
 
 
@@ -42,6 +43,14 @@ MQTT_BUTTONS: tuple[UbpetMqttButtonDescription, ...] = (
         translation_key="mqtt_request_state",
         entity_category=EntityCategory.DIAGNOSTIC,
         service_id="request_state",
+    ),
+    UbpetMqttButtonDescription(
+        key="reset_waste_bin",
+        name="Reset waste bin",
+        icon="mdi:delete-empty",
+        translation_key="reset_waste_bin",
+        entity_category=EntityCategory.CONFIG,
+        service_id=RESET_WASTE_BIN_SERVICE,
     ),
     UbpetMqttButtonDescription(
         key="mqtt_start_clean_up",
@@ -143,7 +152,7 @@ class UbpetMqttCommandButton(CoordinatorEntity[UbpetDataUpdateCoordinator], Butt
         if not super().available:
             return False
         service_id = self.entity_description.service_id
-        if service_id in DIAGNOSTIC_SERVICES:
+        if service_id in DIAGNOSTIC_SERVICES or service_id == RESET_WASTE_BIN_SERVICE:
             return True
         item = self.coordinator.data.get("devices", {}).get(self._serial)
         mode = _mqtt_work_mode(item)
@@ -166,6 +175,11 @@ class UbpetMqttCommandButton(CoordinatorEntity[UbpetDataUpdateCoordinator], Butt
 
     async def async_press(self) -> None:
         if self.entity_description.service_id == REST_REQUEST_SERVICE:
+            await self.coordinator.async_request_refresh()
+            return
+        if self.entity_description.service_id == RESET_WASTE_BIN_SERVICE:
+            await self.hass.async_add_executor_job(self.coordinator.client.reset_box_use_times, self._serial)
+            _LOGGER.info("Reset UPET waste-bin counter for serial=%s", self._serial)
             await self.coordinator.async_request_refresh()
             return
         if self.entity_description.service_id not in DIAGNOSTIC_SERVICES:

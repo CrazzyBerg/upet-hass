@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
@@ -23,26 +24,11 @@ class UbpetSensorDescription(SensorEntityDescription):
 
 DEVICE_SENSORS: tuple[UbpetSensorDescription, ...] = (
     UbpetSensorDescription(
-        key="device_status",
-        name="Device status",
-        icon="mdi:information-outline",
-        translation_key="device_status",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda item: item["device"].get("deviceStatus"),
-    ),
-    UbpetSensorDescription(
         key="box_status",
         name="Box status",
         icon="mdi:list-status",
         translation_key="box_status",
         value_fn=lambda item: _box_status(item),
-    ),
-    UbpetSensorDescription(
-        key="last_event",
-        name="Last event",
-        icon="mdi:timeline-clock-outline",
-        translation_key="last_event",
-        value_fn=lambda item: _last_event_name(item),
     ),
     UbpetSensorDescription(
         key="empty_waste_bin_reminder_days",
@@ -63,16 +49,25 @@ DEVICE_SENSORS: tuple[UbpetSensorDescription, ...] = (
     UbpetSensorDescription(
         key="waste_bin_level",
         name="Waste bin level",
-        icon="mdi:trash-can-outline",
+        icon="mdi:delete-outline",
         translation_key="waste_bin_level",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda item: item["box_use_times"].get("percentage"),
     ),
     UbpetSensorDescription(
+        key="waste_bin_last_reset",
+        name="Waste bin last reset",
+        icon="mdi:history",
+        translation_key="waste_bin_last_reset",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda item: _milliseconds_to_datetime(item["box_use_times"].get("boxUseTimesResetTime")),
+    ),
+    UbpetSensorDescription(
         key="box_full_max",
         name="Box full max",
-        icon="mdi:trash-can",
+        icon="mdi:delete",
         translation_key="box_full_max",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
@@ -232,6 +227,10 @@ class UbpetDeviceSensor(CoordinatorEntity[UbpetDataUpdateCoordinator], SensorEnt
 
     @property
     def native_value(self) -> Any:
+        if self.entity_description.key == "last_rest_update":
+            return self.coordinator.last_rest_update_at
+        if self.entity_description.key == "last_mqtt_update":
+            return self.coordinator.last_mqtt_update_at(self._serial)
         item = self.coordinator.data.get("devices", {}).get(self._serial)
         if not item:
             return None
@@ -252,17 +251,6 @@ class UbpetDeviceSensor(CoordinatorEntity[UbpetDataUpdateCoordinator], SensorEnt
             return {
                 "device_status_code": item.get("device", {}).get("deviceStatus"),
                 "mqtt_work_state": _mqtt_state_value(item, "w_state_app_name"),
-            }
-        if self.entity_description.key == "last_event":
-            record = _last_record(item)
-            if record is None:
-                return {}
-            return {
-                "event_type": record.get("eventType"),
-                "event_status": record.get("status"),
-                "event_time": record.get("timeStr"),
-                "event_weight": record.get("weight"),
-                "event_duration": record.get("costTime"),
             }
         if self.entity_description.key.startswith("mqtt_"):
             mqtt_state = item.get("mqtt_state")
@@ -342,6 +330,18 @@ def _seconds_to_minutes(value: Any) -> int | float | None:
     return int(minutes) if minutes.is_integer() else minutes
 
 
+def _milliseconds_to_datetime(value: Any) -> datetime | None:
+    if value in (None, ""):
+        return None
+    try:
+        milliseconds = int(value)
+    except (TypeError, ValueError):
+        return None
+    if milliseconds <= 0:
+        return None
+    return datetime.fromtimestamp(milliseconds / 1000, UTC)
+
+
 def _box_status(item: dict[str, Any]) -> str | None:
     mqtt_status = _box_status_from_mqtt(item)
     if mqtt_status is not None:
@@ -369,40 +369,6 @@ def _box_status_from_mqtt(item: dict[str, Any]) -> str | None:
     if state == "PAUSED":
         return "Paused"
     return None
-
-
-def _last_event_name(item: dict[str, Any]) -> str | None:
-    record = _last_record(item)
-    if record is None:
-        return None
-    event_type = record.get("eventType")
-    if event_type == 31:
-        return "Cat left"
-    if event_type == 3:
-        return "In the litter box"
-    if event_type == 47:
-        return "Manually cleaned"
-    if event_type == 51:
-        return "Smoothing"
-    return f"Event {event_type}" if event_type is not None else None
-
-
-def _last_record(item: dict[str, Any]) -> dict[str, Any] | None:
-    latest: dict[str, Any] | None = None
-    for key in ("cat_records", "device_records"):
-        records = item.get(key)
-        if isinstance(records, list) and records and isinstance(records[0], dict):
-            record = records[0]
-            if latest is None or _event_time(record) > _event_time(latest):
-                latest = record
-    return latest
-
-
-def _event_time(record: dict[str, Any]) -> int:
-    try:
-        return int(record.get("eventTime") or 0)
-    except (TypeError, ValueError):
-        return 0
 
 
 def _empty_waste_bin_reminder_days(config: dict[str, Any]) -> str | None:

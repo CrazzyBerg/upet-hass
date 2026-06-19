@@ -30,6 +30,7 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER,
             name=DOMAIN,
             update_interval=update_interval,
+            always_update=True,
         )
         self.client = client
         self._mqtt_state_by_serial: dict[str, dict[str, Any]] = {}
@@ -72,6 +73,13 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_mqtt_update_at_by_serial[serial] = datetime.now(UTC)
         self.async_set_updated_data(self._with_runtime_state(self.data or {}))
         return True
+
+    @property
+    def last_rest_update_at(self) -> datetime | None:
+        return self._last_rest_update_at
+
+    def last_mqtt_update_at(self, serial: str) -> datetime | None:
+        return self._last_mqtt_update_at_by_serial.get(serial)
 
     def set_mqtt_work_state(self, serial: str, state: dict[str, Any]) -> None:
         mqtt_state = deepcopy(self._mqtt_state_by_serial.get(serial, {}))

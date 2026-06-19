@@ -26,20 +26,17 @@
   },
   "entity": {
     "sensor": {
-      "device_status": {
-        "name": "Стан пристрою"
-      },
       "box_status": {
         "name": "Статус туалету"
-      },
-      "last_event": {
-        "name": "Остання подія"
       },
       "box_use_times": {
         "name": "Кількість використань"
       },
       "waste_bin_level": {
         "name": "Заповнення контейнера"
+      },
+      "waste_bin_last_reset": {
+        "name": "Останнє скидання контейнера"
       },
       "box_full_max": {
         "name": "Максимум контейнера"
@@ -154,6 +151,9 @@
       },
       "mqtt_request_state": {
         "name": "Запитати стан"
+      },
+      "reset_waste_bin": {
+        "name": "Скинути контейнер"
       },
       "mqtt_start_clean_up": {
         "name": "Почати очищення"

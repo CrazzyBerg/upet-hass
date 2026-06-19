@@ -156,6 +156,13 @@ class UbpetClient:
         )
         return _require_dict(data)
 
+    def reset_box_use_times(self, serial_number: str) -> None:
+        payload = {
+            "boxUseTimes": 0,
+            "serialNumber": serial_number,
+        }
+        self._request("PUT", "/catbox-server/box/config/box-use-times/reset", payload=payload, auth=True)
+
     def get_deodorant_status(self, serial_number: str) -> dict[str, Any]:
         data = self._request(
             "GET",

@@ -26,20 +26,17 @@
   },
   "entity": {
     "sensor": {
-      "device_status": {
-        "name": "Device status"
-      },
       "box_status": {
         "name": "Box status"
-      },
-      "last_event": {
-        "name": "Last event"
       },
       "box_use_times": {
         "name": "Box use times"
       },
       "waste_bin_level": {
         "name": "Waste bin level"
+      },
+      "waste_bin_last_reset": {
+        "name": "Waste bin last reset"
       },
       "box_full_max": {
         "name": "Box full max"
@@ -154,6 +151,9 @@
       },
       "mqtt_request_state": {
         "name": "Request state"
+      },
+      "reset_waste_bin": {
+        "name": "Reset waste bin"
       },
       "mqtt_start_clean_up": {
         "name": "Start clean"

@@ -217,6 +217,33 @@ class ApiUnitTests(unittest.TestCase):
             },
         )
 
+    def test_reset_box_use_times_sends_confirmed_payload(self):
+        recorder = UrlopenRecorder(
+            [
+                (
+                    200,
+                    {
+                        "token": {"token": "auth-token", "refreshToken": None, "expireAt": 9999999999999},
+                        "user": {"userId": 100},
+                    },
+                ),
+                (200, {"code": 0, "message": "success", "data": "reset success", "success": True}),
+            ]
+        )
+
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.make_client().reset_box_use_times("SN123")
+
+        self.assertEqual(recorder.requests[1].selector, "/catbox-server/box/config/box-use-times/reset")
+        self.assertEqual(recorder.requests[1].get_method(), "PUT")
+        self.assertEqual(
+            recorder.payloads()[1],
+            {
+                "boxUseTimes": 0,
+                "serialNumber": "SN123",
+            },
+        )
+
     def test_set_deodorant_alert_sends_deodorant_switch_payload(self):
         recorder = UrlopenRecorder(
             [
