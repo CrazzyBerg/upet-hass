@@ -35,7 +35,7 @@ DEVICE_SENSORS: tuple[UbpetSensorDescription, ...] = (
         name="Empty waste bin reminder days",
         icon="mdi:calendar-week",
         translation_key="empty_waste_bin_reminder_days",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda item: _empty_waste_bin_reminder_days(item["config"]),
     ),
     UbpetSensorDescription(

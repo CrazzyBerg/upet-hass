@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_call_later
 
 from .api import UbpetClient
@@ -58,12 +59,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    @callback
+    def _enable_mqtt_state_polls(_now) -> None:
+        coordinator.enable_mqtt_state_polls()
+
     entry.async_on_unload(
         async_call_later(
             hass,
             MQTT_POLL_START_DELAY_SECONDS,
-            lambda _now: coordinator.enable_mqtt_state_polls(),
+            _enable_mqtt_state_polls,
         )
+    )
+
+    @callback
+    def _stop_mqtt_state_polls(_event) -> None:
+        coordinator.cancel_mqtt_state_polls()
+
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_mqtt_state_polls)
     )
     return True
 

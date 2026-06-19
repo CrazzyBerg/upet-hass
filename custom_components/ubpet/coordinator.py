@@ -71,7 +71,7 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return False
         self._mqtt_state_by_serial[serial] = state
         self._last_mqtt_update_at_by_serial[serial] = datetime.now(UTC)
-        self.async_set_updated_data(self._with_runtime_state(self.data or {}))
+        self._update_runtime_data()
         return True
 
     @property
@@ -87,7 +87,11 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         mqtt_state["optimistic"] = True
         mqtt_state["optimistic_updated_at"] = time.time()
         self._mqtt_state_by_serial[serial] = mqtt_state
-        self.async_set_updated_data(self._with_runtime_state(self.data or {}))
+        self._update_runtime_data()
+
+    def _update_runtime_data(self) -> None:
+        self.data = self._with_runtime_state(self.data or {})
+        self.async_update_listeners()
 
     def start_mqtt_state_poll(self, serial: str, *, fast: bool = False) -> None:
         _LOGGER.info("Starting UPET MQTT state polling for %s fast=%s", serial, fast)
