@@ -5,6 +5,7 @@
         "title": "UPET / Airrobo Cat Litter Box",
         "description": "Enter your UPET/Airrobo account credentials. App credentials and region endpoint are detected from the recovered working API flow.",
         "data": {
+          "region": "Region",
           "username": "Account",
           "password": "Password",
           "app_key": "App key",
