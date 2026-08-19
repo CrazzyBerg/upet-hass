@@ -124,6 +124,19 @@ class MqttCodecUnitTests(unittest.TestCase):
         self.assertEqual(decoded["w_cause"], 90)
         self.assertEqual(decoded["timestamp"], 1781260086)
 
+    def test_all_state_response_forces_pending_when_idle_with_stale_state(self):
+        # Some devices report a stale/nonzero w_state while w_mode is idle
+        # (observed live: w_mode=0, w_state=1 at rest). The vendor app
+        # ignores w_state whenever w_mode is idle and always treats the job
+        # as pending in that case, so the decoded app name must too.
+        decoded = mqtt.summarize_all_state_body(bytes.fromhex("08001001185a9001b6beafd106"))
+
+        self.assertEqual(decoded["w_mode"], 0)
+        self.assertEqual(decoded["w_mode_app_name"], "IDLE")
+        self.assertEqual(decoded["w_state"], 1)
+        self.assertEqual(decoded["w_state_name"], "idle")
+        self.assertEqual(decoded["w_state_app_name"], "PENDING")
+
     def test_service_ids_map_to_app_operation_ordinals(self):
         services = mqtt.SERVICE_ID_MAP
 
