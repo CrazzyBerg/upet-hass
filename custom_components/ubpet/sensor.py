@@ -290,6 +290,15 @@ class UbpetCatSensor(CoordinatorEntity[UbpetDataUpdateCoordinator], SensorEntity
         return self.entity_description.value_fn(cat)
 
     @property
+    def suggested_unit_of_measurement(self) -> str | None:
+        # Only consulted once, when the entity is first registered - lets a
+        # fresh setup default weight display to the instance's own unit
+        # system instead of always landing on the native kg value.
+        if self.entity_description.device_class == SensorDeviceClass.WEIGHT and self.hass is not None:
+            return self.hass.config.units.mass_unit
+        return super().suggested_unit_of_measurement
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         cat = self._cat_data
         if cat is None:
