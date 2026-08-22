@@ -83,6 +83,53 @@ class ApiUnitTests(unittest.TestCase):
         self.assertEqual(payload["password"], hashlib.md5(b"plain-password").hexdigest())
         self.assertNotEqual(payload["password"], "plain-password")
 
+    def test_login_accepts_standard_data_envelope(self):
+        recorder = UrlopenRecorder(
+            [
+                (
+                    200,
+                    {
+                        "code": 0,
+                        "message": "success",
+                        "data": {
+                            "token": {
+                                "token": "wrapped-token",
+                                "refreshToken": "wrapped-refresh",
+                                "expireAt": 9999999999999,
+                            },
+                            "user": {"userId": 321},
+                        },
+                    },
+                )
+            ]
+        )
+
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            auth = self.make_client().login()
+
+        self.assertEqual(auth.token, "wrapped-token")
+        self.assertEqual(auth.refresh_token, "wrapped-refresh")
+        self.assertEqual(auth.user_id, 321)
+
+    def test_login_sends_product_header(self):
+        recorder = UrlopenRecorder(
+            [
+                (
+                    200,
+                    {
+                        "token": {"token": "token-1", "refreshToken": None, "expireAt": 9999999999999},
+                        "user": {"userId": 123},
+                    },
+                )
+            ]
+        )
+
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.make_client().login()
+
+        headers = {key.lower(): value for key, value in recorder.requests[0].headers.items()}
+        self.assertEqual(headers["product"], "test-product")
+
     def test_email_login_tries_email_account_type_first_then_falls_back(self):
         recorder = UrlopenRecorder(
             [

@@ -122,11 +122,12 @@ class UbpetClient:
             "areaCode": "",
             "appId": self.app_id,
         }
-        data = self._request("PUT", "/user-service-rest/v2/user/login", payload=payload, auth=False)
+        response = self._request("PUT", "/user-service-rest/v2/user/login", payload=payload, auth=False)
+        data = _response_data(response)
         token_data = data.get("token") if isinstance(data, dict) else None
         user_data = data.get("user") if isinstance(data, dict) else None
         if not isinstance(token_data, dict) or not token_data.get("token"):
-            raise UbpetApiError(200, data)
+            raise UbpetApiError(200, response)
         self.auth = UbpetAuth(
             token=token_data["token"],
             refresh_token=token_data.get("refreshToken"),
@@ -344,6 +345,7 @@ class UbpetClient:
             "content-type": "application/json; charset=utf-8",
             "accept": "application/json",
             "x-ubt-appid": self.app_id,
+            "product": self.product,
             "priority": "u=3, i",
             "user-agent": USER_AGENT,
             "x-ubt-sign": self.signer.sign(device_id=self.device_id),
@@ -354,7 +356,6 @@ class UbpetClient:
             if self.auth is None:
                 raise RuntimeError("login failed")
             headers["authorization"] = self.auth.token
-            headers["product"] = self.product
 
         req = urllib.request.Request(self.base_url + path, data=body, headers=headers, method=method)
         started = time.monotonic()
@@ -402,6 +403,13 @@ def _raise_for_api_error(status: int, data: Any) -> None:
         code = data.get("code")
         if code not in (None, 0):
             raise UbpetApiError(status, data)
+
+
+def _response_data(payload: Any) -> Any:
+    """Unwrap the standard vendor response envelope when it is present."""
+    if isinstance(payload, dict) and isinstance(payload.get("data"), dict):
+        return payload["data"]
+    return payload
 
 
 def _require_dict(payload: Any) -> dict[str, Any]:
