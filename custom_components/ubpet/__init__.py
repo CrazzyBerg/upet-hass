@@ -14,10 +14,6 @@ from .const import (
     CONF_BASE_URL,
     CONF_DEVICE_ID,
     CONF_PRODUCT,
-    DEFAULT_APP_ID,
-    DEFAULT_APP_KEY,
-    DEFAULT_BASE_URL,
-    DEFAULT_PRODUCT,
     DOMAIN,
     PLATFORMS,
 )
@@ -28,10 +24,12 @@ MQTT_POLL_START_DELAY_SECONDS = 30
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    app_key = entry.data.get(CONF_APP_KEY, DEFAULT_APP_KEY)
-    app_id = entry.data.get(CONF_APP_ID, DEFAULT_APP_ID)
-    base_url = entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL)
-    product = entry.data.get(CONF_PRODUCT, DEFAULT_PRODUCT)
+    # Region resolution happens once, in the config flow; by the time an
+    # entry exists these are already the fully-resolved literal values.
+    app_key = entry.data.get(CONF_APP_KEY, "")
+    app_id = entry.data.get(CONF_APP_ID, "")
+    base_url = entry.data.get(CONF_BASE_URL, "")
+    product = entry.data.get(CONF_PRODUCT, "")
     missing = [
         field
         for field, value in (

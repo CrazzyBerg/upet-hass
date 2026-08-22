@@ -5,17 +5,20 @@ import hashlib
 import json
 import zlib
 
-# Bundled app defaults for the recovered mobile API flow. This keeps the raw
-# values out of the repository while preserving out-of-the-box setup.
+# Bundled app defaults for the recovered mobile API flow, keyed by region.
+# This keeps the raw values out of the repository while preserving
+# out-of-the-box setup for both the EU and NA backends.
 _BUNDLE = (
-    "ljYo2jp-YYEa8!l@{T_VHwzs"
-    "{0}x|hdY{I(D6@voyjxyRau$"
-    "z)xun8hTMS1aMo4c1O-"
-    "X5lfh1Ql<nOA&)l^Vn3b@EHB"
-    "toX(!f>Rp+L&FnPPA`ODIbRT"
-    "Z{p1-"
-    "*t+#BdE1<ICnsV~j(f@4KmCd"
-    "?0G#*?_+4WnPs#"
+    "ljZu(LhF$?&l4eLk)aNBTwvq"
+    "z@j?U~+nDm`K5GM9A*iaKT#%"
+    "ol?U4xJF;qf;t7l;FG9(74fy"
+    "8cE$NH1R{v<Ia*6m@QWf)wh)"
+    "v1|muDEjW2n$j^Zjb_;P`>iP"
+    "Q}dV%bz*2}3!<?Lq}qXXaEy)"
+    "T{0Wu8{Sb3}Tj4~U1P7NrUyH"
+    "rUD2jThtG4GSa+1vAa&gBqEK"
+    "tzlgDf@o9AiuC>Rhk*DMfl`e"
+    "!1="
 )
 
 
@@ -33,16 +36,14 @@ def _bytes(count: int) -> bytes:
     return bytes(data[:count])
 
 
-def _defaults() -> dict[str, str]:
+def _defaults() -> dict[str, dict[str, str]]:
     encoded = b85decode(_BUNDLE.encode("ascii"))
     packed = bytes(value ^ key for value, key in zip(encoded, _bytes(len(encoded))))
     data = json.loads(zlib.decompress(packed).decode("utf-8"))
-    return {str(key): str(value) for key, value in data.items()}
+    return {
+        str(region): {str(key): str(value) for key, value in fields.items()}
+        for region, fields in data.items()
+    }
 
 
-_VALUES = _defaults()
-
-BASE_URL = _VALUES["BASE_URL"]
-APP_ID = _VALUES["APP_ID"]
-APP_KEY = _VALUES["APP_KEY"]
-PRODUCT = _VALUES["PRODUCT"]
+REGIONS = _defaults()

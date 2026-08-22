@@ -17,33 +17,48 @@ from .const import (
     CONF_BASE_URL,
     CONF_DEVICE_ID,
     CONF_PRODUCT,
-    DEFAULT_APP_ID,
-    DEFAULT_APP_KEY,
-    DEFAULT_BASE_URL,
-    DEFAULT_PRODUCT,
+    CONF_REGION,
+    DEFAULT_REGION,
     DOMAIN,
+    REGION_LABELS,
+    REGIONS,
 )
 
 
 def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     defaults = defaults or {}
-    fields: dict[Any, Any] = {
-        vol.Required(CONF_USERNAME, default=defaults.get(CONF_USERNAME, "")): str,
-        vol.Required(CONF_PASSWORD): selector.TextSelector(
-            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-        ),
-    }
-    if not DEFAULT_APP_KEY:
+    fields: dict[Any, Any] = {}
+    if len(REGIONS) > 1:
+        fields[vol.Required(CONF_REGION, default=defaults.get(CONF_REGION, DEFAULT_REGION))] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value=key, label=REGION_LABELS.get(key, key.upper()))
+                    for key in REGIONS
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        )
+    fields[vol.Required(CONF_USERNAME, default=defaults.get(CONF_USERNAME, ""))] = str
+    fields[vol.Required(CONF_PASSWORD)] = selector.TextSelector(
+        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+    )
+    if not REGIONS:
         fields[vol.Required(CONF_APP_KEY, default=defaults.get(CONF_APP_KEY, ""))] = selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
         )
-    if not DEFAULT_BASE_URL:
         fields[vol.Required(CONF_BASE_URL, default=defaults.get(CONF_BASE_URL, ""))] = str
-    if not DEFAULT_APP_ID:
         fields[vol.Required(CONF_APP_ID, default=defaults.get(CONF_APP_ID, ""))] = str
-    if not DEFAULT_PRODUCT:
         fields[vol.Required(CONF_PRODUCT, default=defaults.get(CONF_PRODUCT, ""))] = str
     return vol.Schema(fields)
+
+
+def _region_defaults(region: str | None) -> dict[str, str]:
+    if region is None:
+        # Exactly one bundled region and no selector was shown for it.
+        if len(REGIONS) == 1:
+            return next(iter(REGIONS.values()))
+        return {}
+    return REGIONS.get(region, {})
 
 
 def _validate_input(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -78,12 +93,14 @@ class UbpetConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         if user_input is not None:
+            region = user_input.get(CONF_REGION) if len(REGIONS) > 1 else None
+            region_defaults = _region_defaults(region)
             connection_data = {
                 **user_input,
-                CONF_APP_KEY: DEFAULT_APP_KEY or user_input.get(CONF_APP_KEY),
-                CONF_APP_ID: DEFAULT_APP_ID or user_input.get(CONF_APP_ID),
-                CONF_BASE_URL: DEFAULT_BASE_URL or user_input.get(CONF_BASE_URL),
-                CONF_PRODUCT: DEFAULT_PRODUCT or user_input.get(CONF_PRODUCT),
+                CONF_APP_KEY: region_defaults.get("APP_KEY") or user_input.get(CONF_APP_KEY),
+                CONF_APP_ID: region_defaults.get("APP_ID") or user_input.get(CONF_APP_ID),
+                CONF_BASE_URL: region_defaults.get("BASE_URL") or user_input.get(CONF_BASE_URL),
+                CONF_PRODUCT: region_defaults.get("PRODUCT") or user_input.get(CONF_PRODUCT),
                 CONF_DEVICE_ID: uuid.uuid4().hex,
             }
             try:
@@ -113,6 +130,7 @@ class UbpetConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_APP_ID: app_id,
                         CONF_BASE_URL: _clean_required_string(connection_data[CONF_BASE_URL]),
                         CONF_PRODUCT: _clean_required_string(connection_data[CONF_PRODUCT]),
+                        CONF_REGION: region,
                     },
                 )
 

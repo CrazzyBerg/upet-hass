@@ -725,8 +725,13 @@ def summarize_all_state_body(body: bytes) -> dict[str, Any]:
         summary["w_mode_name"] = WORK_MODE_NAMES.get(w_mode, f"unknown_{w_mode}")
         summary["w_mode_app_name"] = WORK_MODE_APP_NAMES.get(w_mode, f"UNKNOWN_{w_mode}")
     if isinstance(w_state, int):
-        summary["w_state_name"] = WORK_STATE_NAMES.get(w_state, f"unknown_{w_state}")
-        summary["w_state_app_name"] = WORK_STATE_APP_NAMES.get(w_state, f"UNKNOWN_{w_state}")
+        # The vendor app ignores w_state entirely while w_mode is idle and
+        # always treats the job as pending in that case (see xe.e0 in the
+        # decompiled app); some devices report a stale/nonzero w_state at
+        # rest, so mirror that override here rather than trusting it raw.
+        effective_w_state = 0 if w_mode == 0 else w_state
+        summary["w_state_name"] = WORK_STATE_NAMES.get(effective_w_state, f"unknown_{w_state}")
+        summary["w_state_app_name"] = WORK_STATE_APP_NAMES.get(effective_w_state, f"UNKNOWN_{w_state}")
     return summary
 
 

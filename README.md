@@ -83,13 +83,17 @@ The integration also needs vendor app/API fields:
 - `APP_KEY`
 - `PRODUCT`
 
-Bundled app defaults are included with the integration, so normal setup asks
-only for account and password. The app defaults are stored in obfuscated form
-to keep raw values out of the repository.
+Bundled app defaults are included with the integration for both the EU and NA
+backends, so normal setup asks only for account, password, and a region
+selection. The app defaults are stored in obfuscated form to keep raw values
+out of the repository.
 
-If you maintain a private deployment and want to override the bundled defaults,
-use `custom_components/ubpet/secrets.py.example` as a template for a private
-`secrets.py`.
+If you maintain a private deployment and want to override the bundled
+defaults (or add another region), use
+`custom_components/ubpet/secrets.py.example` as a template for a private
+`secrets.py`. If no `secrets.py` is present at all, the config flow falls back
+to asking for `BASE_URL`/`APP_ID`/`APP_KEY`/`PRODUCT` manually instead of
+showing a region picker.
 
 ## Entities
 
