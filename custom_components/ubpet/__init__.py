@@ -16,24 +16,35 @@ from .const import (
     CONF_COUNTRY,
     CONF_DEVICE_ID,
     CONF_PRODUCT,
+    CONF_PROFILE,
     DEFAULT_APP_ID,
     DEFAULT_APP_KEY,
     DEFAULT_BASE_URL,
     DEFAULT_PRODUCT,
     DOMAIN,
     PLATFORMS,
+    base_url_for_country,
 )
 from .coordinator import UbpetDataUpdateCoordinator
+from .profiles import PROFILE_UPET, get_profile
 
 _LOGGER = logging.getLogger(__name__)
 MQTT_POLL_START_DELAY_SECONDS = 30
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    app_key = entry.data.get(CONF_APP_KEY, DEFAULT_APP_KEY)
-    app_id = entry.data.get(CONF_APP_ID, DEFAULT_APP_ID)
-    base_url = entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL)
-    product = entry.data.get(CONF_PRODUCT, DEFAULT_PRODUCT)
+    profile_id = entry.data.get(CONF_PROFILE)
+    profile = get_profile(profile_id) if profile_id else None
+    country = entry.data.get(CONF_COUNTRY, "")
+    profile_base_url = (
+        base_url_for_country(country)
+        if profile and profile.profile_id == PROFILE_UPET and country
+        else profile.base_url if profile else DEFAULT_BASE_URL
+    )
+    app_key = entry.data.get(CONF_APP_KEY) or (profile.app_key if profile else DEFAULT_APP_KEY)
+    app_id = entry.data.get(CONF_APP_ID) or (profile.app_id if profile else DEFAULT_APP_ID)
+    base_url = entry.data.get(CONF_BASE_URL) or profile_base_url
+    product = entry.data.get(CONF_PRODUCT) or (profile.product if profile else DEFAULT_PRODUCT)
     missing = [
         field
         for field, value in (
@@ -55,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         app_id=app_id,
         base_url=base_url,
         product=product,
-        area_code=entry.data.get(CONF_AREA_CODE, entry.data.get(CONF_COUNTRY, "")),
+        area_code=entry.data.get(CONF_AREA_CODE, country),
     )
     coordinator = UbpetDataUpdateCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()

@@ -124,6 +124,14 @@ class MqttCodecUnitTests(unittest.TestCase):
         self.assertEqual(decoded["w_cause"], 90)
         self.assertEqual(decoded["timestamp"], 1781260086)
 
+    def test_idle_mode_normalizes_running_state_for_sc01(self):
+        decoded = mqtt.summarize_all_state_body(bytes.fromhex("1001185a9001f9cb84d306"))
+
+        self.assertEqual(decoded["w_mode"], 0)
+        self.assertEqual(decoded["w_state"], 1)
+        self.assertEqual(decoded["w_state_name"], "running")
+        self.assertEqual(decoded["w_state_app_name"], "PENDING")
+
     def test_service_ids_map_to_app_operation_ordinals(self):
         services = mqtt.SERVICE_ID_MAP
 

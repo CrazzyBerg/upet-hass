@@ -726,7 +726,11 @@ def summarize_all_state_body(body: bytes) -> dict[str, Any]:
         summary["w_mode_app_name"] = WORK_MODE_APP_NAMES.get(w_mode, f"UNKNOWN_{w_mode}")
     if isinstance(w_state, int):
         summary["w_state_name"] = WORK_STATE_NAMES.get(w_state, f"unknown_{w_state}")
-        summary["w_state_app_name"] = WORK_STATE_APP_NAMES.get(w_state, f"UNKNOWN_{w_state}")
+        # Some SC-01 firmware reports IDLE + RUNNING when it is ready. Treat
+        # idle mode as PENDING so start controls remain available.
+        summary["w_state_app_name"] = (
+            "PENDING" if w_mode == 0 else WORK_STATE_APP_NAMES.get(w_state, f"UNKNOWN_{w_state}")
+        )
     return summary
 
 

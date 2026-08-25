@@ -2,9 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "UPET / Airrobo Cat Litter Box",
-        "description": "Select the country configured in the UPET/Airrobo app, then enter your account credentials.",
+        "title": "UPET / Airrobo / Meowant Cat Litter Box",
+        "description": "Select the account provider and enter the credentials. UPET / Airrobo accounts also require a country.",
         "data": {
+          "profile": "Account provider",
           "country": "Country",
           "username": "Account",
           "password": "Password",
@@ -19,7 +20,7 @@
       "auth_failed": "Authentication failed. Check account and password.",
       "cannot_connect": "Could not connect to the UPET API.",
       "unknown": "Unexpected error. Check Home Assistant logs.",
-      "missing_required": "Country, account, and password are required."
+      "missing_required": "Provider, account, and password are required. UPET / Airrobo accounts also require a country."
     },
     "abort": {
       "already_configured": "This account is already configured."

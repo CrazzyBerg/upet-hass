@@ -5,17 +5,16 @@ import hashlib
 import json
 import zlib
 
-# Bundled app defaults for the recovered mobile API flow. This keeps the raw
-# values out of the repository while preserving out-of-the-box setup.
+# Bundled API defaults for supported cloud account providers. This keeps the
+# raw values out of the repository while preserving out-of-the-box setup.
 _BUNDLE = (
-    "ljYo2jp-YYEa8!l@{T_VHwzs"
-    "{0}x|hdY{I(D6@voyjxyRau$"
-    "z)xun8hTMS1aMo4c1O-"
-    "X5lfh1Ql<nOA&)l^Vn3b@EHB"
-    "toX(!f>Rp+L&FnPPA`ODIbRT"
-    "Z{p1-"
-    "*t+#BdE1<ICnsV~j(f@4KmCd"
-    "?0G#*?_+4WnPs#"
+    "ljRDILhF$?!_XhN`J5)3vsVFo^*uPp_l"
+    "HGRB+=u{@gH=v*MSf3iDGu-F##~9?*sb"
+    "+tW{~&PHuamL@2VY&0_5W#z7wx;LwDrx"
+    "~ifA)?l1>?Zo7R#@aoj1&urgC9e60$$v"
+    "^AD7b9Agk_9)l*z;!y4$b5AlhT^FXj!Z"
+    "Yl&krkDG~0-6C3cd7jXa+#{lII)PsNCR"
+    "f>Q0vwMoWfEcUKtGm5aU@KVAob}cUv~"
 )
 
 
@@ -46,3 +45,7 @@ BASE_URL = _VALUES["BASE_URL"]
 APP_ID = _VALUES["APP_ID"]
 APP_KEY = _VALUES["APP_KEY"]
 PRODUCT = _VALUES["PRODUCT"]
+MEOWANT_BASE_URL = _VALUES["MEOWANT_BASE_URL"]
+MEOWANT_APP_ID = _VALUES["MEOWANT_APP_ID"]
+MEOWANT_APP_KEY = _VALUES["MEOWANT_APP_KEY"]
+MEOWANT_PRODUCT = _VALUES["MEOWANT_PRODUCT"]

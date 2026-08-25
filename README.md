@@ -1,6 +1,6 @@
-# UPET / Airrobo Cat Litter Box for Home Assistant
+# UPET / Airrobo / Meowant Cat Litter Box for Home Assistant
 
-Custom Home Assistant integration for UPET / Airrobo smart cat litter boxes.
+Custom Home Assistant integration for UPET, Airrobo, and Meowant smart cat litter boxes.
 
 This integration uses the vendor cloud API for account/device data and the vendor IM/MQTT channel for live work commands and work-state polling.
 
@@ -14,7 +14,8 @@ For safer use, create a separate UPET/Airrobo account and share litter box acces
 
 ## Features
 
-- Account login with UPET/Airrobo credentials.
+- Account login with UPET/Airrobo or Meowant credentials.
+- Selectable account provider so credentials are routed to the correct vendor tenant.
 - Device discovery from the vendor cloud account.
 - Read-only box, waste-bin, deodorant, online, and firmware data.
 - Cat profile sensors and cat picture URL attributes when returned by the API.
@@ -73,8 +74,9 @@ Settings -> Devices & services -> Add integration -> UPET / Airrobo Cat Litter B
 
 Required fields:
 
-- `Country`: the same country selected for the account in the official app.
-- `Account`: UPET/Airrobo login account.
+- `Account provider`: select `UPET / Airrobo` or `Meowant` according to the account being used.
+- `Country`: for UPET/Airrobo, the same country selected for the account in the official app.
+- `Account`: login account for the selected provider.
 - `Password`: plain account password. The integration hashes it internally before sending it to the API.
 
 The integration also needs vendor app credentials:

@@ -19,6 +19,7 @@ from .const import (
     CONF_COUNTRY,
     CONF_DEVICE_ID,
     CONF_PRODUCT,
+    CONF_PROFILE,
     DEFAULT_APP_ID,
     DEFAULT_APP_KEY,
     DEFAULT_PRODUCT,
@@ -26,6 +27,7 @@ from .const import (
     SUPPORTED_COUNTRIES,
     base_url_for_country,
 )
+from .profiles import ACCOUNT_PROFILES, DEFAULT_PROFILE, PROFILE_UPET, get_profile
 
 
 def _schema(
@@ -40,11 +42,20 @@ def _schema(
     if selected_country not in SUPPORTED_COUNTRIES:
         selected_country = None
     country_field = (
-        vol.Required(CONF_COUNTRY, default=selected_country)
+        vol.Optional(CONF_COUNTRY, default=selected_country)
         if selected_country
-        else vol.Required(CONF_COUNTRY)
+        else vol.Optional(CONF_COUNTRY)
     )
     fields: dict[Any, Any] = {
+        vol.Required(CONF_PROFILE, default=defaults.get(CONF_PROFILE, DEFAULT_PROFILE)): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value=profile_id, label=profile.label)
+                    for profile_id, profile in ACCOUNT_PROFILES.items()
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
         country_field: selector.CountrySelector(
             selector.CountrySelectorConfig(countries=list(SUPPORTED_COUNTRIES))
         ),
@@ -109,15 +120,24 @@ class UbpetConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                country = _clean_country(user_input.get(CONF_COUNTRY))
+                profile = get_profile(_clean_required_string(user_input.get(CONF_PROFILE)))
+                country = (
+                    _clean_country(user_input.get(CONF_COUNTRY))
+                    if profile.profile_id == PROFILE_UPET
+                    else ""
+                )
                 connection_data = {
                     **user_input,
                     CONF_COUNTRY: country,
-                    CONF_APP_KEY: DEFAULT_APP_KEY or user_input.get(CONF_APP_KEY),
-                    CONF_APP_ID: DEFAULT_APP_ID or user_input.get(CONF_APP_ID),
+                    CONF_APP_KEY: profile.app_key or user_input.get(CONF_APP_KEY),
+                    CONF_APP_ID: profile.app_id or user_input.get(CONF_APP_ID),
                     CONF_AREA_CODE: country,
-                    CONF_BASE_URL: base_url_for_country(country),
-                    CONF_PRODUCT: DEFAULT_PRODUCT or user_input.get(CONF_PRODUCT),
+                    CONF_BASE_URL: (
+                        base_url_for_country(country)
+                        if profile.profile_id == PROFILE_UPET
+                        else profile.base_url or user_input.get(CONF_BASE_URL)
+                    ),
+                    CONF_PRODUCT: profile.product or user_input.get(CONF_PRODUCT),
                     CONF_DEVICE_ID: uuid.uuid4().hex,
                 }
                 devices = await self.hass.async_add_executor_job(_validate_input, connection_data)
@@ -133,22 +153,30 @@ class UbpetConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 app_id = _clean_required_string(connection_data[CONF_APP_ID])
                 await self.async_set_unique_id(f"{app_id}:{user_input[CONF_USERNAME]}")
                 self._abort_if_unique_id_configured()
-                title = "UPET"
+                title = profile.label
                 if devices:
                     title = devices[0].get("deviceName") or devices[0].get("serialNumber") or title
+                entry_data = {
+                    "account": _clean_required_string(user_input[CONF_USERNAME]),
+                    "password": _clean_required_string(user_input[CONF_PASSWORD]),
+                    CONF_DEVICE_ID: connection_data[CONF_DEVICE_ID],
+                    CONF_PROFILE: profile.profile_id,
+                }
+                if country:
+                    entry_data[CONF_COUNTRY] = country
+                    entry_data[CONF_AREA_CODE] = country
+                if not all((profile.app_key, profile.app_id, profile.base_url, profile.product)):
+                    entry_data.update(
+                        {
+                            CONF_APP_KEY: _clean_required_string(connection_data[CONF_APP_KEY]),
+                            CONF_APP_ID: app_id,
+                            CONF_BASE_URL: _clean_required_string(connection_data[CONF_BASE_URL]),
+                            CONF_PRODUCT: _clean_required_string(connection_data[CONF_PRODUCT]),
+                        }
+                    )
                 return self.async_create_entry(
                     title=title,
-                    data={
-                        "account": _clean_required_string(user_input[CONF_USERNAME]),
-                        "password": _clean_required_string(user_input[CONF_PASSWORD]),
-                        CONF_COUNTRY: country,
-                        CONF_APP_KEY: _clean_required_string(connection_data[CONF_APP_KEY]),
-                        CONF_AREA_CODE: country,
-                        CONF_DEVICE_ID: connection_data[CONF_DEVICE_ID],
-                        CONF_APP_ID: app_id,
-                        CONF_BASE_URL: _clean_required_string(connection_data[CONF_BASE_URL]),
-                        CONF_PRODUCT: _clean_required_string(connection_data[CONF_PRODUCT]),
-                    },
+                    data=entry_data,
                 )
 
         configured_country = getattr(getattr(self.hass, "config", None), "country", None)
