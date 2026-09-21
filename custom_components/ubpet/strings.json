@@ -156,6 +156,9 @@
       "reset_waste_bin": {
         "name": "Reset waste bin"
       },
+      "reset_deodorant": {
+        "name": "Deodorant replaced"
+      },
       "mqtt_start_clean_up": {
         "name": "Start clean"
       },

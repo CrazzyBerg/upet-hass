@@ -364,6 +364,32 @@ class ApiUnitTests(unittest.TestCase):
             },
         )
 
+    def test_reset_deodorant_block_sends_replaced_payload(self):
+        recorder = UrlopenRecorder(
+            [
+                (
+                    200,
+                    {
+                        "token": {"token": "auth-token", "refreshToken": None, "expireAt": 9999999999999},
+                        "user": {"userId": 100},
+                    },
+                ),
+                (200, {"code": 0, "message": "success", "data": None, "success": True}),
+            ]
+        )
+
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.make_client().reset_deodorant_block("SN123")
+
+        self.assertEqual(recorder.requests[1].selector, "/catbox-server/app/deodorant-block/replaced")
+        self.assertEqual(recorder.requests[1].get_method(), "POST")
+        self.assertEqual(
+            recorder.payloads()[1],
+            {
+                "serialNumber": "SN123",
+            },
+        )
+
     def test_set_deodorant_alert_sends_deodorant_switch_payload(self):
         recorder = UrlopenRecorder(
             [
