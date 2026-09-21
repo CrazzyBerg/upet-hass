@@ -156,6 +156,9 @@
       "reset_waste_bin": {
         "name": "Скинути контейнер"
       },
+      "reset_deodorant": {
+        "name": "Дезодорант замінено"
+      },
       "mqtt_start_clean_up": {
         "name": "Почати очищення"
       },

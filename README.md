@@ -137,6 +137,7 @@ Device buttons:
 - REST request.
 - MQTT request state.
 - Reset waste-bin counter.
+- Deodorant replaced.
 - Start clean.
 - Pause clean.
 - Resume clean.
@@ -198,7 +199,7 @@ Confirmed operation ordinals:
 - The integration depends on the vendor cloud and vendor IM/MQTT service.
 - Commands are confirmed by MQTT delivery/status responses, but full semantic validation of every receipt/error cause is not complete.
 - Control board / child lock is currently exposed as read-only because the observed API flow returns a permission error for writes.
-- Deodorize, direct light control, camera toggle, and full-alert threshold controls are not implemented yet.
+- Direct light control, camera toggle, and full-alert threshold controls are not implemented yet.
 
 ## Development
 
@@ -239,6 +240,7 @@ Implemented REST endpoints:
 - `GET /catbox-server/box/config/box-use-times/?serialNumber=...`
 - `PUT /catbox-server/box/config/box-use-times/reset`
 - `GET /catbox-server/app/deodorant-block/status?serialNumber=...`
+- `POST /catbox-server/app/deodorant-block/replaced`
 - `GET /v1/ubtechinc-im-manager/im/online/device/?sn=...`
 - `POST /v1/ubtechinc-im-manager/im/login`
 - `GET /v1/ubtechinc-im-manager/im/friends`
@@ -262,7 +264,6 @@ MQTT state request uses RISP command `0x3fd`. Operation commands use RISP comman
 Planned or open work:
 
 - Decode more MQTT receipt/error causes and surface command failures more clearly.
-- Implement deodorize command if available.
 - Implement full-alert threshold setting.
 - Implement writable control board / child lock if a permitted API flow is found.
 - Add Home Assistant platform tests with `pytest-homeassistant-custom-component`.

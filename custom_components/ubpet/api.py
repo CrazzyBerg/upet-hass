@@ -208,6 +208,10 @@ class UbpetClient:
         )
         return _require_dict(data)
 
+    def reset_deodorant_block(self, serial_number: str) -> None:
+        payload = {"serialNumber": serial_number}
+        self._request("POST", "/catbox-server/app/deodorant-block/replaced", payload=payload, auth=True)
+
     def get_device_online(self, serial_number: str) -> dict[str, Any]:
         data = self._request(
             "GET",
