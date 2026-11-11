@@ -362,7 +362,8 @@ def _box_status(item: dict[str, Any]) -> str | None:
 
 def _box_status_from_mqtt(item: dict[str, Any]) -> str | None:
     state = _mqtt_state_value(item, "w_state_app_name")
-    if state == "PENDING":
+    mode = _mqtt_state_value(item, "w_mode_app_name")
+    if state == "PENDING" or (state == "RUNNING" and mode == "IDLE"):
         return "Standby"
     if state == "RUNNING":
         return "Running"

@@ -20,7 +20,7 @@ MQTT_STATE_PAUSED_POLL_SECONDS = 10
 MQTT_STATE_PENDING_POLL_SECONDS = 60
 MQTT_STATE_POLL_HEARTBEAT_SECONDS = 1
 MQTT_STATE_REQUEST_TIMEOUT_SECONDS = 30
-MQTT_STATE_IN_PROGRESS_STALE_SECONDS = 45
+MQTT_OPTIMISTIC_STATE_TTL_SECONDS = 90
 
 
 class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -35,7 +35,8 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = client
         self._mqtt_state_by_serial: dict[str, dict[str, Any]] = {}
         self._mqtt_state_poll_task: asyncio.Task[None] | None = None
-        self._mqtt_state_request_started_at_by_serial: dict[str, datetime] = {}
+        self._mqtt_state_request_futures_by_serial: dict[str, asyncio.Future[Any]] = {}
+        self._mqtt_confirmed_state_by_serial: dict[str, dict[str, Any] | None] = {}
         self._mqtt_state_polls_enabled = False
         self._last_rest_update_at: datetime | None = None
         self._last_mqtt_update_at_by_serial: dict[str, datetime] = {}
@@ -70,6 +71,7 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if state is None:
             return False
         self._mqtt_state_by_serial[serial] = state
+        self._mqtt_confirmed_state_by_serial.pop(serial, None)
         self._last_mqtt_update_at_by_serial[serial] = datetime.now(UTC)
         self._update_runtime_data()
         return True
@@ -82,12 +84,39 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self._last_mqtt_update_at_by_serial.get(serial)
 
     def set_mqtt_work_state(self, serial: str, state: dict[str, Any]) -> None:
-        mqtt_state = deepcopy(self._mqtt_state_by_serial.get(serial, {}))
+        current = self._mqtt_state_by_serial.get(serial)
+        if serial not in self._mqtt_confirmed_state_by_serial:
+            # Remember the last state the device actually reported, to restore it
+            # if the optimistic state is never confirmed.
+            self._mqtt_confirmed_state_by_serial[serial] = deepcopy(current) if current else None
+        mqtt_state = deepcopy(current or {})
         mqtt_state.update(state)
         mqtt_state["optimistic"] = True
         mqtt_state["optimistic_updated_at"] = time.time()
         self._mqtt_state_by_serial[serial] = mqtt_state
         self._update_runtime_data()
+
+    def _expire_optimistic_mqtt_state(self, serial: str) -> bool:
+        state = self._mqtt_state_by_serial.get(serial)
+        if not state or not state.get("optimistic"):
+            return False
+        updated_at = state.get("optimistic_updated_at")
+        if isinstance(updated_at, (int, float)) and time.time() - updated_at < MQTT_OPTIMISTIC_STATE_TTL_SECONDS:
+            return False
+        confirmed = self._mqtt_confirmed_state_by_serial.pop(serial, None)
+        _LOGGER.warning(
+            "UPET optimistic MQTT state for %s was not confirmed within %ss; reverting to state=%s mode=%s",
+            serial,
+            MQTT_OPTIMISTIC_STATE_TTL_SECONDS,
+            confirmed.get("w_state_app_name") if confirmed else None,
+            confirmed.get("w_mode_app_name") if confirmed else None,
+        )
+        if confirmed:
+            self._mqtt_state_by_serial[serial] = confirmed
+        else:
+            self._mqtt_state_by_serial.pop(serial, None)
+        self._update_runtime_data()
+        return True
 
     def _update_runtime_data(self) -> None:
         self.data = self._with_runtime_state(self.data or {})
@@ -109,7 +138,7 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._mqtt_state_poll_task.cancel()
             self._mqtt_state_poll_task = None
         self._next_mqtt_poll_at_by_serial.clear()
-        self._mqtt_state_request_started_at_by_serial.clear()
+        self._mqtt_state_request_futures_by_serial.clear()
 
     def _ensure_mqtt_state_poll_task(self) -> None:
         if self._mqtt_state_poll_task is None or self._mqtt_state_poll_task.done():
@@ -137,15 +166,25 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.info("Stopped UPET MQTT state poll loop")
 
     async def async_request_mqtt_state(self, serial: str) -> None:
-        if serial in self._mqtt_state_request_started_at_by_serial and not self._mqtt_state_request_is_stale(serial):
+        if self._mqtt_state_request_in_progress(serial):
             _LOGGER.debug("UPET MQTT state request already in progress for %s", serial)
             return
         self._next_mqtt_poll_at_by_serial.pop(serial, None)
-        self._mqtt_state_request_started_at_by_serial[serial] = datetime.now(UTC)
         _LOGGER.info("Requesting UPET MQTT state for %s", serial)
+        future = self.hass.async_add_executor_job(self.client.send_mqtt_service, serial, "request_state")
+        self._mqtt_state_request_futures_by_serial[serial] = future
         try:
-            async with asyncio.timeout(MQTT_STATE_REQUEST_TIMEOUT_SECONDS):
-                result = await self.hass.async_add_executor_job(self.client.send_mqtt_service, serial, "request_state")
+            try:
+                result = await asyncio.wait_for(asyncio.shield(future), MQTT_STATE_REQUEST_TIMEOUT_SECONDS)
+            except TimeoutError:
+                # The executor thread cannot be cancelled: keep this request marked
+                # as in progress until it really finishes, so polls never overlap.
+                _LOGGER.warning(
+                    "UPET MQTT state poll for %s still running after %ss; waiting for it to finish",
+                    serial,
+                    MQTT_STATE_REQUEST_TIMEOUT_SECONDS,
+                )
+                result = await future
             if isinstance(result, dict):
                 result.setdefault("service_id", "request_state")
             updated = self.store_mqtt_result(serial, result)
@@ -158,27 +197,17 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _mqtt_work_mode(item),
                 result.get("received_count") if isinstance(result, dict) else None,
             )
-        except TimeoutError:
-            _LOGGER.warning(
-                "UPET MQTT state poll timed out for %s after %ss",
-                serial,
-                MQTT_STATE_REQUEST_TIMEOUT_SECONDS,
-            )
         except (OSError, RuntimeError, UbpetApiError) as err:
             _LOGGER.warning("UPET MQTT state poll failed for %s: %s", serial, err)
         except Exception:
             _LOGGER.exception("Unexpected UPET MQTT state poll failure for %s", serial)
         finally:
-            self._mqtt_state_request_started_at_by_serial.pop(serial, None)
+            if self._mqtt_state_request_futures_by_serial.get(serial) is future:
+                self._mqtt_state_request_futures_by_serial.pop(serial, None)
+            self._expire_optimistic_mqtt_state(serial)
             self._schedule_next_mqtt_state_poll(serial)
 
     def _with_runtime_state(self, data: dict[str, Any]) -> dict[str, Any]:
-        if (
-            not self._mqtt_state_by_serial
-            and self._last_rest_update_at is None
-            and not self._last_mqtt_update_at_by_serial
-        ):
-            return data
         merged = deepcopy(data)
         devices = merged.get("devices")
         if not isinstance(devices, dict):
@@ -188,6 +217,8 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 continue
             if state := self._mqtt_state_by_serial.get(serial):
                 item["mqtt_state"] = deepcopy(state)
+            else:
+                item.pop("mqtt_state", None)
             item["runtime_state"] = {
                 "last_rest_update_at": self._last_rest_update_at,
                 "last_mqtt_update_at": self._last_mqtt_update_at_by_serial.get(serial),
@@ -214,11 +245,8 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         now = datetime.now(UTC)
         for serial in devices:
-            if serial in self._mqtt_state_request_started_at_by_serial:
-                if self._mqtt_state_request_is_stale(serial):
-                    self._mqtt_state_request_started_at_by_serial.pop(serial, None)
-                else:
-                    continue
+            if self._mqtt_state_request_in_progress(serial):
+                continue
             due_at = self._next_mqtt_poll_at_by_serial.get(serial)
             if due_at is not None and due_at > now:
                 continue
@@ -226,27 +254,18 @@ class UbpetDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.hass.async_create_task(self.async_request_mqtt_state(serial))
 
     def _mqtt_state_poll_delay(self, serial: str) -> int:
-        state = _mqtt_work_state(self.data.get("devices", {}).get(serial) if self.data else None)
-        if state == "RUNNING":
+        item = self.data.get("devices", {}).get(serial) if self.data else None
+        state = _mqtt_work_state(item)
+        # IDLE + RUNNING is a resting state on some firmware; don't fast-poll it.
+        if state == "RUNNING" and _mqtt_work_mode(item) != "IDLE":
             return MQTT_STATE_RUNNING_POLL_SECONDS
         if state == "PAUSED":
             return MQTT_STATE_PAUSED_POLL_SECONDS
         return MQTT_STATE_PENDING_POLL_SECONDS
 
-    def _mqtt_state_request_is_stale(self, serial: str) -> bool:
-        started_at = self._mqtt_state_request_started_at_by_serial.get(serial)
-        if started_at is None:
-            return True
-        age = (datetime.now(UTC) - started_at).total_seconds()
-        if age <= MQTT_STATE_IN_PROGRESS_STALE_SECONDS:
-            return False
-        _LOGGER.warning(
-            "UPET MQTT state request for %s is stale in_progress: age=%.1fs stale_after=%ss",
-            serial,
-            age,
-            MQTT_STATE_IN_PROGRESS_STALE_SECONDS,
-        )
-        return True
+    def _mqtt_state_request_in_progress(self, serial: str) -> bool:
+        future = self._mqtt_state_request_futures_by_serial.get(serial)
+        return future is not None and not future.done()
 
 
 def _latest_mqtt_state(result: dict[str, Any] | object) -> dict[str, Any] | None:

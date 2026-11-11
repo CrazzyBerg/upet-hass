@@ -162,7 +162,8 @@ class UbpetMqttCommandButton(CoordinatorEntity[UbpetDataUpdateCoordinator], Butt
         if service_id == "start_drop":
             return mode == "RAKING_UP" and state == "PAUSED"
         if service_id in {"start_clean_up", "start_flatten", "start_rise"}:
-            return state == "PENDING"
+            # Some firmware (e.g. main_v0.1.0.7) reports IDLE + RUNNING at rest instead of PENDING.
+            return state == "PENDING" or (mode == "IDLE" and state == "RUNNING")
         if service_id == "pause_clean_up":
             return mode == "CLEANING" and state == "RUNNING"
         if service_id == "resume_clean_up":
