@@ -163,6 +163,9 @@ The litter box camera records every visit. This integration exposes those record
 - **Websocket** `ubpet/video` (`serial`, `record_id`) prepares a video and returns a signed, time-limited URL that a `<video>` element can play.
 - **HTTP** `GET /api/ubpet/video/<serial>/<record_id>` serves the MP4 (Home Assistant auth or a signed path required; supports range requests for Safari/iOS).
 
+- **Websocket** `ubpet/assign` (`serial`, `record_id`, `cat_id`) changes which cat a visit belongs to, like the app's correction screen. It uses `PUT /catbox-server/web/box/cat-record` for a visit that already has a cat and `POST /catbox-server/web/box/cat/record/new` for an unmatched one, both with `{"catInfoId", "recordId"}`.
+- **Cat photos**: `GET /api/ubpet/cat_photo/<cat_id>` (auth or signed path) serves the cat's profile photo, and `ubpet/cats` returns signed paths for `<img>`. The cat list carries unsigned private URLs (403), so the photo is signed through the app's file service first: `GET /v2/file-service-rest/private/download?pName=airpet&validTime=3600&cloudType=2&urls=<url>`.
+
 The vendor stores videos as Motion-JPEG AVI (240x240, ~5 fps) with a broken audio header, which browsers cannot play and ffmpeg cannot open directly. The integration extracts the JPEG frames itself and encodes them to H.264/MP4 with Home Assistant's ffmpeg (under a second per visit on a Raspberry Pi 4).
 
 Converted videos are only a cache: they live in the system temp folder, are deleted 15 minutes after they were last watched, and the folder is cleared when Home Assistant starts. Nothing is archived. Video URLs are fetched fresh from the vendor because their signatures expire after a few hours, and only HTTPS URLs on the vendor's object storage (`*.aliyuncs.com`) are downloaded.

@@ -33,6 +33,8 @@ from .video import (
     CAT_RECORDS,
     avi_frame_rate,
     download_video,
+    image_type,
+    is_allowed_video_url,
     mjpeg_frames,
     signed_url_is_fresh,
     summarize_record,
@@ -47,6 +49,9 @@ RECORDS_PAGE_SIZE = 30
 RECORDS_CACHE_SECONDS = 60
 FIND_MAX_PAGES = 10
 VIDEO_URL = "/api/ubpet/video/{serial}/{record_id}"
+PHOTO_URL = "/api/ubpet/cat_photo/{cat_id}"
+PHOTO_CACHE_SECONDS = 3000
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 
 def video_path(serial: str, record_id: int | str) -> str:
@@ -62,6 +67,7 @@ class UbpetMedia:
         self._records: dict[tuple[str, int], dict[str, Any]] = {}
         self._pages: dict[tuple[str, int, int, str], tuple[float, list[dict[str, Any]]]] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self._photos: dict[int, tuple[float, bytes, str]] = {}
 
     # ------------------------------------------------------------ helpers
     def coordinator_for(self, serial: str | None):
@@ -120,6 +126,53 @@ class UbpetMedia:
                 break
             before = records[-1].get("eventTime") or 0
         return None
+
+    # ------------------------------------------------------------ cats
+    def cats(self) -> list[tuple[Any, dict[str, Any]]]:
+        out = []
+        for coordinator in self.hass.data.get(DOMAIN, {}).values():
+            for cat in (coordinator.data or {}).get("cats") or []:
+                if isinstance(cat, dict) and cat.get("catInfoId"):
+                    out.append((coordinator, cat))
+        return out
+
+    async def async_cat_photo(self, cat_id: int) -> tuple[bytes, str]:
+        cached = self._photos.get(cat_id)
+        if cached and time.monotonic() - cached[0] < PHOTO_CACHE_SECONDS:
+            return cached[1], cached[2]
+        for coordinator, cat in self.cats():
+            if cat.get("catInfoId") != cat_id or not is_allowed_video_url(cat.get("icon")):
+                continue
+            signed = await self.hass.async_add_executor_job(coordinator.client.sign_private_url, cat["icon"])
+            data = await self.hass.async_add_executor_job(
+                lambda: download_video(signed, timeout=20, max_bytes=MAX_PHOTO_BYTES)
+            )
+            mime = image_type(data)
+            if mime is None:
+                raise ValueError("not an image")
+            self._photos[cat_id] = (time.monotonic(), data, mime)
+            return data, mime
+        raise FileNotFoundError("cat has no photo")
+
+    async def async_assign(self, serial: str, record_id: int, cat_id: int) -> dict[str, Any]:
+        coordinator, serial = self.coordinator_for(serial)
+        if coordinator is None:
+            raise LookupError("no UPET litter box")
+        if not any(c.get("catInfoId") == cat_id for _, c in self.cats()):
+            raise ValueError("unknown cat")
+        record = await self.async_find_record(serial, record_id)
+        if record is None:
+            raise FileNotFoundError("record not found")
+        replace = bool(record.get("catInfoId"))
+        await self.hass.async_add_executor_job(
+            lambda: coordinator.client.set_record_cat(record_id, cat_id, replace=replace)
+        )
+        name = next((c.get("nickname") for _, c in self.cats() if c.get("catInfoId") == cat_id), None)
+        record["catInfoId"] = cat_id
+        record["catNickname"] = name
+        self._pages.clear()
+        self.hass.async_create_task(coordinator.async_request_refresh())
+        return summarize_record(record)
 
     # ------------------------------------------------------------ videos
     async def async_video_file(self, serial: str, record_id: int) -> Path:
@@ -201,8 +254,11 @@ async def async_setup_media(hass: HomeAssistant) -> UbpetMedia:
     hass.data[DATA_MEDIA] = media
     await hass.async_add_executor_job(media.purge)
     hass.http.register_view(UbpetVideoView(media))
+    hass.http.register_view(UbpetCatPhotoView(media))
     websocket_api.async_register_command(hass, ws_records)
     websocket_api.async_register_command(hass, ws_video)
+    websocket_api.async_register_command(hass, ws_cats)
+    websocket_api.async_register_command(hass, ws_assign)
     async_track_time_interval(hass, media.async_cleanup, CLEANUP_INTERVAL)
     return media
 
@@ -232,6 +288,71 @@ class UbpetVideoView(HomeAssistantView):
         return web.FileResponse(
             path, headers={"Content-Type": "video/mp4", "Cache-Control": "private, max-age=600"}
         )
+
+
+class UbpetCatPhotoView(HomeAssistantView):
+    """Serve a cat's profile photo (auth or signed path required)."""
+
+    url = "/api/ubpet/cat_photo/{cat_id}"
+    name = "api:ubpet:cat_photo"
+    requires_auth = True
+
+    def __init__(self, media: UbpetMedia) -> None:
+        self.media = media
+
+    async def get(self, request: web.Request, cat_id: str) -> web.StreamResponse:
+        try:
+            cid = int(cat_id)
+        except ValueError:
+            return web.Response(status=HTTPStatus.BAD_REQUEST)
+        try:
+            data, mime = await self.media.async_cat_photo(cid)
+        except FileNotFoundError:
+            return web.Response(status=HTTPStatus.NOT_FOUND)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("UPET cat photo %s failed: %s", cid, err)
+            return web.Response(status=HTTPStatus.BAD_GATEWAY)
+        return web.Response(body=data, content_type=mime, headers={"Cache-Control": "private, max-age=3000"})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ubpet/cats"})
+@callback
+def ws_cats(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Cats with a signed photo path for <img> elements."""
+    media: UbpetMedia = hass.data[DATA_MEDIA]
+    cats = []
+    for _, cat in media.cats():
+        cid = cat["catInfoId"]
+        photo = None
+        if is_allowed_video_url(cat.get("icon")):
+            photo = async_sign_path(
+                hass, PHOTO_URL.format(cat_id=cid), timedelta(hours=12), refresh_token_id=connection.refresh_token_id
+            )
+        cats.append({"id": cid, "name": cat.get("nickname"), "photo": photo})
+    connection.send_result(msg["id"], cats)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "ubpet/assign",
+        vol.Required("serial"): str,
+        vol.Required("record_id"): int,
+        vol.Required("cat_id"): int,
+    }
+)
+@websocket_api.async_response
+async def ws_assign(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Change which cat a visit belongs to."""
+    media: UbpetMedia = hass.data[DATA_MEDIA]
+    try:
+        record = await media.async_assign(msg["serial"], msg["record_id"], msg["cat_id"])
+    except (LookupError, FileNotFoundError, ValueError) as err:
+        connection.send_error(msg["id"], "invalid", str(err))
+        return
+    except Exception as err:  # noqa: BLE001
+        connection.send_error(msg["id"], "failed", str(err))
+        return
+    connection.send_result(msg["id"], record)
 
 
 @websocket_api.websocket_command(

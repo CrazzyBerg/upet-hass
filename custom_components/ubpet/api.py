@@ -276,6 +276,33 @@ class UbpetClient:
             raise UbpetApiError(200, data)
         return [record for record in records if isinstance(record, dict)]
 
+    def set_record_cat(self, record_id: int, cat_info_id: int, *, replace: bool) -> None:
+        """Say which cat a visit belongs to, like the app's correction screen.
+
+        The app uses POST .../cat/record/new for a visit no cat was matched to
+        and PUT .../cat-record to change the cat of an already matched visit.
+        """
+        payload = {"catInfoId": int(cat_info_id), "recordId": int(record_id)}
+        if replace:
+            self._request("PUT", "/catbox-server/web/box/cat-record", payload=payload, auth=True)
+        else:
+            self._request("POST", "/catbox-server/web/box/cat/record/new", payload=payload, auth=True)
+
+    def sign_private_url(self, url: str, valid_seconds: int = 3600) -> str:
+        """Signed, time limited URL for a file on the vendor's private storage.
+
+        Cat photos are returned unsigned (403); the app signs them through the
+        file service before showing them (pName "airpet", cloudType 2 = Aliyun).
+        """
+        query = urllib.parse.urlencode(
+            {"pName": "airpet", "validTime": int(valid_seconds), "cloudType": 2, "urls": url}
+        )
+        data = self._request("GET", f"/v2/file-service-rest/private/download?{query}", auth=True)
+        values = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(values, list) or not values or not isinstance(values[0], str):
+            raise UbpetApiError(200, data)
+        return values[0]
+
     def set_auto_clean_delay(self, serial_number: str, minutes: int) -> None:
         if minutes < 1:
             raise ValueError("auto clean delay must be at least 1 minute")

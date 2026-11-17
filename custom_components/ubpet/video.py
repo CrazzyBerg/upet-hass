@@ -45,14 +45,25 @@ def signed_url_is_fresh(url: str, *, margin_seconds: float = 300, now: float | N
     return expires_at - (time.time() if now is None else now) > margin_seconds
 
 
-def download_video(url: str, *, timeout: float = 60) -> bytes:
+def download_video(url: str, *, timeout: float = 60, max_bytes: int = MAX_VIDEO_BYTES) -> bytes:
     if not is_allowed_video_url(url):
-        raise ValueError("video URL is not on the vendor storage")
+        raise ValueError("URL is not on the vendor storage")
     with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310 - host checked above
-        data = response.read(MAX_VIDEO_BYTES + 1)
-    if len(data) > MAX_VIDEO_BYTES:
-        raise ValueError("video is too large")
+        data = response.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise ValueError("file is too large")
     return data
+
+
+def image_type(data: bytes) -> str | None:
+    """MIME type of a JPEG/PNG/WebP image, None for anything else."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG"):
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 
 def avi_frame_rate(data: bytes) -> float:
