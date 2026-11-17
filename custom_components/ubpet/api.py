@@ -260,9 +260,12 @@ class UbpetClient:
         data = self._request("GET", "/catbox-server/web/cat/info", auth=True)
         return _require_list(data)
 
-    def get_box_records(self, serial_number: str, message_type: int, size: int = 1) -> list[dict[str, Any]]:
+    def get_box_records(
+        self, serial_number: str, message_type: int, size: int = 1, event_time: int | str = 0
+    ) -> list[dict[str, Any]]:
+        """Newest records first; pass the last record's eventTime to page back."""
         payload = {
-            "eventTime": "0",
+            "eventTime": str(event_time),
             "serialNumber": serial_number,
             "size": size,
             "messageType": message_type,
