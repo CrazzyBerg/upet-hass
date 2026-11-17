@@ -3,6 +3,8 @@
   "name": "UPET / Airrobo Cat Litter Box",
   "codeowners": ["@CrazzyBerg"],
   "config_flow": true,
+  "dependencies": ["http", "ffmpeg"],
+  "after_dependencies": ["media_source"],
   "documentation": "https://github.com/CrazzyBerg/upet-hass",
   "issue_tracker": "https://github.com/CrazzyBerg/upet-hass/issues",
   "iot_class": "cloud_polling",

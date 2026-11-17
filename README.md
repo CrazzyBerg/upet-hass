@@ -154,6 +154,19 @@ Cat sensors:
 
 Cat picture URLs are exposed as cat entity attributes when returned by the vendor API.
 
+## Visit History and Videos
+
+The litter box camera records every visit. This integration exposes those records:
+
+- **Media browser**: `Media -> UPET kedi tuvaleti -> <your box>` lists the latest visits (cat, time, weight, duration) and plays their videos.
+- **Websocket** `ubpet/records` (`serial`, `size` up to 50, `before` = the `eventTime` cursor of the last record) returns visits without any signed vendor URLs, for custom cards.
+- **Websocket** `ubpet/video` (`serial`, `record_id`) prepares a video and returns a signed, time-limited URL that a `<video>` element can play.
+- **HTTP** `GET /api/ubpet/video/<serial>/<record_id>` serves the MP4 (Home Assistant auth or a signed path required; supports range requests for Safari/iOS).
+
+The vendor stores videos as Motion-JPEG AVI (240x240, ~5 fps) with a broken audio header, which browsers cannot play and ffmpeg cannot open directly. The integration extracts the JPEG frames itself and encodes them to H.264/MP4 with Home Assistant's ffmpeg (under a second per visit on a Raspberry Pi 4).
+
+Converted videos are only a cache: they live in the system temp folder, are deleted 15 minutes after they were last watched, and the folder is cleared when Home Assistant starts. Nothing is archived. Video URLs are fetched fresh from the vendor because their signatures expire after a few hours, and only HTTPS URLs on the vendor's object storage (`*.aliyuncs.com`) are downloaded.
+
 ## MQTT Behavior
 
 Work commands are sent through the vendor IM/MQTT path, not REST.
