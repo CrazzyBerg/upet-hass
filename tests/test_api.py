@@ -279,6 +279,46 @@ class ApiUnitTests(unittest.TestCase):
         self.assertEqual(raised.exception.status, 401)
         self.assertEqual(len(recorder.requests), 4)
 
+    LOGIN = (
+        200,
+        {"token": {"token": "auth-token", "refreshToken": None, "expireAt": 9999999999999}, "user": {"userId": 100}},
+    )
+    OK = (200, {"code": 0, "message": "success", "data": None, "success": True})
+
+    def test_set_record_cat_changes_matched_visit_with_put(self):
+        recorder = UrlopenRecorder([self.LOGIN, self.OK])
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.make_client().set_record_cat(1001, 7, replace=True)
+        self.assertEqual(recorder.requests[1].selector, "/catbox-server/web/box/cat-record")
+        self.assertEqual(recorder.requests[1].get_method(), "PUT")
+        self.assertEqual(recorder.payloads()[1], {"catInfoId": 7, "recordId": 1001})
+
+    def test_set_record_cat_assigns_unmatched_visit_with_post(self):
+        recorder = UrlopenRecorder([self.LOGIN, self.OK])
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.make_client().set_record_cat(1002, 7, replace=False)
+        self.assertEqual(recorder.requests[1].selector, "/catbox-server/web/box/cat/record/new")
+        self.assertEqual(recorder.requests[1].get_method(), "POST")
+        self.assertEqual(recorder.payloads()[1], {"catInfoId": 7, "recordId": 1002})
+
+    def test_sign_private_url_uses_file_service(self):
+        signed = "https://airpet-private-eu.oss-eu-central-1.aliyuncs.com/pro/cat/1/a.jpeg?Expires=1&Signature=x"
+        recorder = UrlopenRecorder([self.LOGIN, (200, {"code": 0, "data": [signed]})])
+        url = "https://airpet-private-eu.oss-eu-central-1.aliyuncs.com/pro/cat/1/a.jpeg"
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            self.assertEqual(self.make_client().sign_private_url(url), signed)
+        selector = recorder.requests[1].selector
+        self.assertTrue(selector.startswith("/v2/file-service-rest/private/download?"))
+        query = api.urllib.parse.parse_qs(selector.split("?", 1)[1])
+        self.assertEqual(query, {"pName": ["airpet"], "validTime": ["3600"], "cloudType": ["2"], "urls": [url]})
+        self.assertEqual(recorder.requests[1].get_method(), "GET")
+
+    def test_sign_private_url_rejects_empty_reply(self):
+        recorder = UrlopenRecorder([self.LOGIN, (200, {"code": 0, "data": []})])
+        with patch.object(api.urllib.request, "urlopen", recorder):
+            with self.assertRaises(api.UbpetApiError):
+                self.make_client().sign_private_url("https://x.aliyuncs.com/a.jpeg")
+
     def test_set_auto_clean_delay_sends_switch_update_payload_in_seconds(self):
         recorder = UrlopenRecorder(
             [

@@ -24,6 +24,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import UbpetDataUpdateCoordinator
+from .media import async_setup_media
 
 _LOGGER = logging.getLogger(__name__)
 MQTT_POLL_START_DELAY_SECONDS = 30
@@ -61,6 +62,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    await async_setup_media(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     @callback
